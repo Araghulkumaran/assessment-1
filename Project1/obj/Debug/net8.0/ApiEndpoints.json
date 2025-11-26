@@ -1,0 +1,54 @@
+[
+  {
+    "ContainingType": "ArticlesApiController",
+    "Method": "GetArticles",
+    "RelativePath": "api/ArticlesApi",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "ArticlesApiController",
+    "Method": "AssignVendor",
+    "RelativePath": "api/ArticlesApi/assign",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "ArticlesApiController\u002BAssignDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "ArticlesApiController",
+    "Method": "UpdateVendor",
+    "RelativePath": "api/ArticlesApi/update",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "ArticlesApiController\u002BUpdateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "ArticlesApiController",
+    "Method": "Vendors",
+    "RelativePath": "api/ArticlesApi/vendors",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]

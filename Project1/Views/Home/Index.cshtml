@@ -1,0 +1,219 @@
+﻿@{
+    ViewData["Title"] = "Article Management";
+}
+
+<!-- BOOTSTRAP -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+<!-- DATATABLES CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" />
+
+<!-- Note: jQuery is loaded by _Layout. DataTables JS is moved to Scripts section below to ensure correct order. -->
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">Article Information</h2>
+
+    <!-- Bulk Assign Vendor Section -->
+    <div class="row mb-3">
+        <div class="col-3">
+            <select id="bulkVendor" class="form-select">
+                <option value="">-- Select Vendor --</option>
+            </select>
+        </div>
+
+        <div class="col-3">
+            <button id="assignBtn" class="btn btn-primary">Assign Selected</button>
+        </div>
+    </div>
+
+    <table id="articleTable" class="display table table-striped" style="width:100%">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="selectAll" /></th>
+                <th>Expand</th>
+                <th>AutoArtID</th>
+                <th>ChapterID</th>
+                <th>Pages</th>
+                <th>Dept</th>
+                <th>Vendor</th>
+                <th>Update</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script>
+    $(document).ready(function () {
+        // Basic auth for API (demo only; replace with secure auth in production)
+        function basicAuthHeader() {
+            const token = btoa('admin1:xxx');
+            return 'Basic ' + token;
+        }
+
+        // Set header for all jQuery AJAX
+        $.ajaxSetup({
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('Authorization', basicAuthHeader());
+            }
+        });
+
+        // Load Vendor Dropdowns from API
+        let vendorList = [];
+
+        function loadVendors() {
+            return $.get("/api/ArticlesApi/vendors", function (data) {
+                vendorList = data;
+                data.forEach(v => $("#bulkVendor").append(`<option value="${v.vendorID}">${v.vendorName}</option>`));
+            });
+        }
+
+        // DataTable Initialization
+        let table = $('#articleTable').DataTable({
+            ajax: {
+                url: "/api/ArticlesApi",
+                dataSrc: "",
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('Authorization', basicAuthHeader());
+                }
+            },
+            columns: [
+                {
+                    data: null,
+                    orderable: false,
+                    render: data => `<input type="checkbox" class="rowCheck" data-id="${data.autoArtID}" />`
+                },
+                {
+                    className: 'details-control',
+                    orderable: false,
+                    data: null,
+                    defaultContent: '<button class="btn btn-sm btn-secondary expandBtn">+</button>'
+                },
+                { data: "autoArtID" },
+                { data: "chapterID" },
+                { data: "actualPages" },
+                { data: "deptName" },
+                {
+                    data: null,
+                    render: function (data) {
+                        let html = `<select class="form-select vendorSelect" data-id="${data.autoArtID}">
+                                        <option value="">--Select--</option>`;
+                        vendorList.forEach(v => {
+                            let selected = data.vendorID === v.vendorID ? "selected" : "";
+                            html += `<option value="${v.vendorID}" ${selected}>${v.vendorName}</option>`;
+                        });
+                        html += `</select>`;
+                        return html;
+                    }
+                },
+                {
+                    data: null,
+                    render: d => `<button class="btn btn-sm btn-success updateBtn" data-id="${d.autoArtID}">Update</button>`
+                }
+            ]
+        });
+
+        // Load vendors first, then reload table
+        loadVendors().then(() => table.ajax.reload());
+
+
+        //-----------------------------------------------------
+        // Expand / Collapse row
+        //-----------------------------------------------------
+        $('#articleTable tbody').on('click', '.expandBtn', function () {
+            let tr = $(this).closest('tr');
+            let row = table.row(tr);
+
+            if (row.child.isShown()) {
+                row.child.hide();
+                $(this).text('+');
+            }
+            else {
+                let d = row.data();
+                let childHtml = `
+                    <div>
+                        <b>JBM Auto ID:</b> ${d.jbm_AutoID} <br />
+                        <b>Internal ID:</b> ${d.intrnlID}
+                    </div>
+                `;
+                row.child(childHtml).show();
+                $(this).text('-');
+            }
+        });
+
+
+        //-----------------------------------------------------
+        // Select All Checkboxes
+        //-----------------------------------------------------
+        $("#selectAll").on("change", function () {
+            $(".rowCheck").prop("checked", $(this).is(":checked"));
+        });
+
+
+        //-----------------------------------------------------
+        // Single Row Update
+        //-----------------------------------------------------
+        $('#articleTable tbody').on('click', '.updateBtn', function () {
+            let articleId = $(this).data("id");
+            let vendorId = $(`.vendorSelect[data-id="${articleId}"]`).val();
+
+            if (!vendorId) {
+                alert("Please select vendor first.");
+                return;
+            }
+
+            $.ajax({
+                url: "/api/ArticlesApi/update",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    autoArtID: articleId,
+                    vendorId: parseInt(vendorId)
+                }),
+                success: function () {
+                    alert("Updated successfully!");
+                    table.ajax.reload();
+                }
+            });
+        });
+
+
+        //-----------------------------------------------------
+        // Bulk Vendor Assignment
+        //-----------------------------------------------------
+        $("#assignBtn").click(function () {
+            let vendorId = $("#bulkVendor").val();
+            if (!vendorId) {
+                alert("Please select vendor first.");
+                return;
+            }
+
+            let selectedIds = $(".rowCheck:checked")
+                .map(function () { return $(this).data("id"); })
+                .get();
+
+            if (selectedIds.length === 0) {
+                alert("Please select at least one article.");
+                return;
+            }
+
+            $.ajax({
+                url: "/api/ArticlesApi/assign",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    vendorId: parseInt(vendorId),
+                    articleIds: selectedIds.join(',')
+                }),
+                success: function () {
+                    alert("Vendor assigned successfully!");
+                    table.ajax.reload();
+                }
+            });
+        });
+    });
+    </script>
+}
